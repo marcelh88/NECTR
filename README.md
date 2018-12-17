@@ -29,7 +29,7 @@ The models expect data to be given in the following form:
 * **entity2id.txt**: All entities and the corresponding Ids, one per line. The first line is the number of entities.
 * **relation2id.txt**: All relations and the corresponding Ids, one per line. The first line is the number of relations.
 * **Categories.csv**: Each line has information about a category and the items belonging to that category. This file is used in the category-based evaluation and for visualization.
-* **Solutions_matrix.csv** (Optional; Unzip the file Solutions_matrix.zip): A matrix of **Solutions** x **Items** where each cell represents the number of times a specific item has been configured in the corresponding solution. This file is necessary for NECTR as an input to the neural autoencoder, whereas the other models do not require this file.
+* **Solutions_matrix.csv** (Optional; unzip the file Solutions_matrix.zip and place the csv file in the data folder): A matrix of **Solutions** x **Items** where each cell represents the number of times a specific item has been configured in the corresponding solution. This file is necessary for NECTR as an input to the neural autoencoder, whereas the other models do not require this file.
 
 All text files use `\t` as the column delimiter and the CSV files use `;`.
 
