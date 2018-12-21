@@ -49,4 +49,4 @@ A demo on how to use the recommender system can be found in the [notebook](Recom
 
 <a name="rescom">[5] Marcel Hildebrandt, Swathi Shyam Sunder, et al. Configuration of Industrial Automation Solutions Using Multi-relational Recommender Systems. Proceedings of ECML-PKDD, 2018.</a>
 
-<a name="rescal">[6] Nickel, Tresp, et al. A three-way model for collective learning onmulti-relational data. Proceedings of ICML, 2011.</a>
+<a name="rescal">[6] Nickel, Tresp, et al. A three-way model for collective learning on multi-relational data. Proceedings of ICML, 2011.</a>
