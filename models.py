@@ -193,6 +193,7 @@ class TensorModel(Model):
                 step, complete_solution, results = mgr.sess.run(
                     [self.global_step, self.train_model.predict, self.train_model.results], feed_dict)
 
+                results['model_variables'] = self.get_model_variables(mgr)
                 return complete_solution, results
 
             if isinstance(self, RESCOMModel) or isinstance(self, RESCOMCategoryModel) or isinstance(self, NECTRModel):
@@ -211,6 +212,17 @@ class TensorModel(Model):
 
     def rank(self, partial_solution):
         pass
+
+    def get_model_variables(self, mgr):
+        model_variables = {}
+        if mgr is None:
+            mgr = self.Manager()
+        trainable_variables = tf.trainable_variables()
+        trainable_variables_values = mgr.sess.run(trainable_variables)
+        # Iterate over all the trainable variables and store them by name and value
+        for variable, value in zip(trainable_variables, trainable_variables_values):
+            model_variables[variable.name] = value
+        return model_variables
 
 
 class NMFModel(MatrixModel):

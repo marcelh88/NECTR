@@ -313,6 +313,8 @@ class CrossValidation:
         model_result['relation2id'] = self.DataHelper.df_relation2id
         with open(path_to_results + best_model['rs'].name + '_RecommenderSystem.pickle', 'wb') as fp:
             pickle.dump(model_result, fp)
+        with open(path_to_results + best_model['rs'].name + '_ModelVariables.pickle', 'wb') as fp:
+            pickle.dump(model_result.get('model_variables'), fp)
 
         np.savetxt(path_to_results + 'transform.csv', model_result.get('transform', []), delimiter=';')
         np.savetxt(path_to_results + 'item_embeddings.csv', model_result.get('item_embeddings', []), delimiter=';')
