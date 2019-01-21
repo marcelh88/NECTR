@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import random
 from enum import Enum
+from scipy.sparse import csr_matrix
 
 
 class Sampling(Enum):
@@ -22,7 +23,6 @@ class DataHelper:
     item_distance = None
     data = None
     adjacency = None
-    df_sol_mat = None
     sampling = Sampling.UNIFORM
 
     def __init__(self):
@@ -39,7 +39,6 @@ class DataHelper:
         DataHelper.category2item = {k: v for i in temp for k, v in i.items()}
         temp = None
 
-        DataHelper.df_triple2id = pd.read_table(data_path + 'triple2id.txt', index_col=None, header=0, names=['h', 't', 'r'])
         DataHelper.df_entity2id = pd.read_table(data_path + 'entity2id.txt', index_col=None, header=0,
                                      names=['entity', 'id', 'type'], encoding='latin1')
         DataHelper.item_ids = DataHelper.df_entity2id[DataHelper.df_entity2id['type'] == 'item']['id'].astype(int).tolist()
@@ -48,10 +47,13 @@ class DataHelper:
                                        names=['relation', 'id'])
 
         try:
-            DataHelper.df_sol_mat = pd.read_csv(data_path + 'Solutions_matrix.csv', sep=';', index_col=0).T
-        except FileNotFoundError:
-            print('Solutions data in matrix format not found')
+            DataHelper.df_triple2id = pd.read_table(data_path + 'triple2id.txt', index_col=None, header=0,
+                                                    names=['h', 't', 'r', 'n'])
+        except pd.errors.ParserError:
+            print('No count data found for the triples')
             print('Continuing...')
+            DataHelper.df_triple2id = pd.read_table(data_path + 'triple2id.txt', index_col=None, header=0,
+                                                    names=['h', 't', 'r'])
 
         DataHelper.set_parameters(parameters)
 
@@ -176,6 +178,16 @@ class DataHelper:
         return DataHelper.data[DataHelper.data['r'] == 0]
 
     @staticmethod
+    def get_solution_matrix(solution_ids):
+        temp = DataHelper.df_triple2id[DataHelper.df_triple2id['h'].isin(solution_ids)]
+        solution_id2index = {j: i for i, j in enumerate(solution_ids)}
+
+        solution_matrix = csr_matrix((temp['n'], ([solution_id2index[i] for i in temp['h']], temp['t'])),
+                                     (len(solution_ids), DataHelper.get_item_count()))
+
+        return solution_matrix, solution_id2index
+
+    @staticmethod
     def sol2triple(solutions):
         temp = []
         for row in solutions.itertuples():
@@ -185,8 +197,7 @@ class DataHelper:
         return triples
 
     @staticmethod
-    def sol2mat(solutions):
-        mat = np.zeros((len(solutions), DataHelper.get_item_count()))
+    def sol2mat(solutions, sparse=False):
         rows, cols = [], []
         for row in solutions.itertuples():
             index, h, t = row
@@ -194,7 +205,13 @@ class DataHelper:
                 temp = [int(i) for i in t.split('\t')]
                 rows += [index] * len(temp)
                 cols += temp
-        mat[rows, cols] = 1
+
+        if sparse:
+            mat = csr_matrix(([1] * len(rows), (rows, cols)), (len(solutions), DataHelper.get_item_count()))
+        else:
+            mat = np.zeros((len(solutions), DataHelper.get_item_count()))
+            mat[rows, cols] = 1
+
         return mat
 
     @staticmethod
@@ -203,7 +220,7 @@ class DataHelper:
 
     @staticmethod
     def corrupt_tail(triple, n=1):
-        _, h, t, r = triple
+        h, t, r = triple.h, triple.t, triple.r
         corrupt_tails = DataHelper.adjacency['r'][r]['t'].difference(DataHelper.adjacency['r'][r]['h_map'][h])
         t_corrupt = []
 
@@ -248,7 +265,7 @@ class DataHelper:
             triples = []
             for x in sample.itertuples():
                 temp = DataHelper.corrupt_tail(x, negative2positive_ratio)
-                _, h, t, r = x
+                h, t, r = x.h, x.t, x.r
                 if category:
                     t_category = DataHelper.get_category_encoding(t)
                     triples += [[h, t, r, h, i, r, t_category, DataHelper.get_category_encoding(i)] for i in temp]
@@ -267,7 +284,7 @@ class DataHelper:
     @staticmethod
     def get_batch_solution(partial_data, complete_data, batch_size):
         batch_index = 0
-        while batch_index < len(partial_data):
+        while batch_index < partial_data.shape[0]:
             partial_sample = partial_data[batch_index: batch_index + batch_size]
             complete_sample = complete_data[batch_index: batch_index + batch_size]
             yield {'partial_solution': partial_sample, 'complete_solution': complete_sample}

@@ -140,12 +140,12 @@ class CrossValidation:
 
             temp = train_solutions.copy()
             if self.config.nectr_item_counts:
-                self.train_solutions = self.DataHelper.df_sol_mat.loc[[str(h) for h in temp['h'].tolist()]]
-                self.train_solutions_masked, _ = self.mask_test_set(temp, self.config.mask, as_mat=self.train_solutions)
+                self.train_solutions, sol2index = self.DataHelper.get_solution_matrix(temp['h'].tolist())
+                self.train_solutions_masked, _ = self.mask_test_set(temp, self.config.mask, as_mat=(self.train_solutions, sol2index))
             else:
                 self.train_solutions_masked, _ = self.mask_test_set(temp, self.config.mask)
-                self.train_solutions_masked = self.DataHelper.sol2mat(self.train_solutions_masked)
-                self.train_solutions = self.DataHelper.sol2mat(temp[['h', 't']])
+                self.train_solutions_masked = self.DataHelper.sol2mat(self.train_solutions_masked, sparse=True)
+                self.train_solutions = self.DataHelper.sol2mat(temp[['h', 't']], sparse=True)
 
             if self.config.nectr_train_tf_on_solutions:
                 self.train = pd.concat((train, others, non_contains))
@@ -160,8 +160,8 @@ class CrossValidation:
 
         # Mask entries in the validation and test sets
         if non_linear and self.config.nectr_item_counts:
-            self.test_solutions = self.DataHelper.df_sol_mat.loc[[str(h) for h in self.test['h'].tolist()]]
-            self.test_masked, self.test_mask = self.mask_test_set(self.test, new_item_ids, as_mat=self.test_solutions)
+            self.test_solutions, sol2index = self.DataHelper.get_solution_matrix(self.test['h'].tolist())
+            self.test_masked, self.test_mask = self.mask_test_set(self.test, new_item_ids, as_mat=(self.test_solutions, sol2index))
         else:
             self.test_masked, self.test_mask = self.mask_test_set(self.test, new_item_ids)
 
@@ -197,12 +197,12 @@ class CrossValidation:
             if non_linear:
                 temp = train.copy()
                 if self.config.nectr_item_counts:
-                    self.train_solutions = self.DataHelper.df_sol_mat.loc[[str(h) for h in temp['h'].tolist()]]
-                    self.train_solutions_masked, _ = self.mask_test_set(temp, self.config.mask, as_mat=self.train_solutions)
+                    self.train_solutions, sol2index = self.DataHelper.get_solution_matrix(temp['h'].tolist())
+                    self.train_solutions_masked, _ = self.mask_test_set(temp, self.config.mask, as_mat=(self.train_solutions, sol2index))
                 else:
                     self.train_solutions_masked, _ = self.mask_test_set(temp, self.config.mask)
-                    self.train_solutions_masked = self.DataHelper.sol2mat(self.train_solutions_masked)
-                    self.train_solutions = self.DataHelper.sol2mat(temp[['h', 't']])
+                    self.train_solutions_masked = self.DataHelper.sol2mat(self.train_solutions_masked, sparse=True)
+                    self.train_solutions = self.DataHelper.sol2mat(temp[['h', 't']], sparse=True)
 
                 if self.config.nectr_train_tf_on_solutions:
                     self.train = pd.concat((self.DataHelper.sol2triple(train), non_contains))
@@ -219,10 +219,10 @@ class CrossValidation:
 
         # Mask entries in the validation and test sets
         if non_linear and self.config.nectr_item_counts:
-            self.valid_solutions = self.DataHelper.df_sol_mat.loc[[str(h) for h in self.valid['h'].tolist()]]
-            self.valid_masked, self.valid_mask = self.mask_test_set(self.valid, self.config.mask, as_mat=self.valid_solutions)
-            self.test_solutions = self.DataHelper.df_sol_mat.loc[[str(h) for h in self.test['h'].tolist()]]
-            self.test_masked, self.test_mask = self.mask_test_set(self.test, self.config.mask, as_mat=self.test_solutions)
+            self.valid_solutions, sol2index = self.DataHelper.get_solution_matrix(self.valid['h'].tolist())
+            self.valid_masked, self.valid_mask = self.mask_test_set(self.valid, self.config.mask, as_mat=(self.valid_solutions, sol2index))
+            self.test_solutions, sol2index = self.DataHelper.get_solution_matrix(self.test['h'].tolist())
+            self.test_masked, self.test_mask = self.mask_test_set(self.test, self.config.mask, as_mat=(self.test_solutions, sol2index))
         else:
             self.valid_masked, self.valid_mask = self.mask_test_set(self.valid, self.config.mask)
             self.test_masked, self.test_mask = self.mask_test_set(self.test, self.config.mask)
@@ -365,25 +365,24 @@ class CrossValidation:
         global all_masked_items
         all_masked_items = []
 
-        def mask_random_mat(df_solutions, df_sol_mat, mask):
-            df_solutions_masked = df_sol_mat.copy()
+        def mask_random_mat(df_solutions, sol_mat, mask):
+            sol_mat, sol2index = sol_mat
+            solutions_masked = sol_mat.copy()
 
             for row in df_solutions.itertuples():
-                index, h, t = row
+                h, t = row.h, row.t
 
                 items = t.split('\t')
-
                 if mask is Mask.RANDOM:
                     masked_items = random.sample(items, len(items) // 2)
                 else:
                     masked_items = [i for i in items if int(i) in mask]
 
                 all_masked_items.append(masked_items)
-
                 for t in masked_items:
-                    df_solutions_masked.at[str(h), int(t)] = 0
+                    solutions_masked[sol2index[h], int(t)] = 0
 
-            return df_solutions_masked
+            return solutions_masked
 
         def mask_random(df_solutions):
             df_solutions_masked = df_solutions.copy()

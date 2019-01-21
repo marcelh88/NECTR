@@ -183,7 +183,7 @@ class TensorModel(Model):
                 # print("partial_solution", np.unique(partial_solution))
                 items = np.array(range(self.config.n_item), dtype=np.int32)
                 feed_dict = {
-                    self.train_model.partial_solution: partial_solution,
+                    self.train_model.partial_solution: partial_solution.toarray(),
                     self.train_model.pos_t: items,  # item embeddings
                     self.train_model.pos_r: np.array([0], dtype=np.int32),  # index of the 'contains' relation
                 }
@@ -198,7 +198,7 @@ class TensorModel(Model):
 
             if isinstance(self, RESCOMModel) or isinstance(self, RESCOMCategoryModel) or isinstance(self, NECTRModel):
                 if not self.config.nectr_item_counts:
-                    partial_solution = self.DataHelper.sol2mat(partial_solution)
+                    partial_solution = self.DataHelper.sol2mat(partial_solution, sparse=True)
                 complete_solution, results = test_by_projection(partial_solution)
             else:
                 complete_solution = []
@@ -1012,19 +1012,19 @@ class NECTRModel(TensorModel):
 
             def train_step_recommendation(param_values):
                 if self.config.nectr_item_counts:
-                    temp = np.array(param_values['complete_solution'])
+                    temp = param_values['complete_solution'].toarray()
                     temp[temp > 1] = 1
                     feed_dict = {
                         self.learning_rate: self.config.nectr_learning_rate,
-                        self.train_model.partial_solution: param_values['partial_solution'],
-                        self.train_model.item_counts: param_values['complete_solution'],
+                        self.train_model.partial_solution: param_values['partial_solution'].toarray(),
+                        self.train_model.item_counts: param_values['complete_solution'].toarray(),
                         self.train_model.complete_solution: temp
                     }
                 else:
                     feed_dict = {
                         self.learning_rate: self.config.nectr_learning_rate,
-                        self.train_model.partial_solution: param_values['partial_solution'],
-                        self.train_model.complete_solution: param_values['complete_solution']
+                        self.train_model.partial_solution: param_values['partial_solution'].toarray(),
+                        self.train_model.complete_solution: param_values['complete_solution'].toarray()
                     }
 
                 _, step, loss = mgr.sess.run(
@@ -1037,15 +1037,15 @@ class NECTRModel(TensorModel):
                     feed_dict[getattr(self.train_model, p)] = batch[i]
 
                 if self.config.nectr_item_counts:
-                    temp = np.array(batch_solution['complete_solution'])
+                    temp = batch_solution['complete_solution'].toarray()
                     temp[temp > 1] = 1
-                    feed_dict[getattr(self.train_model, 'partial_solution')] = batch_solution['partial_solution']
-                    feed_dict[getattr(self.train_model, 'item_counts')] = batch_solution['complete_solution']
+                    feed_dict[getattr(self.train_model, 'partial_solution')] = batch_solution['partial_solution'].toarray()
+                    feed_dict[getattr(self.train_model, 'item_counts')] = batch_solution['complete_solution'].toarray()
                     feed_dict[getattr(self.train_model, 'complete_solution')] = temp
 
                 else:
-                    feed_dict[getattr(self.train_model, 'partial_solution')] = batch_solution['partial_solution']
-                    feed_dict[getattr(self.train_model, 'complete_solution')] = batch_solution['complete_solution']
+                    feed_dict[getattr(self.train_model, 'partial_solution')] = batch_solution['partial_solution'].toarray()
+                    feed_dict[getattr(self.train_model, 'complete_solution')] = batch_solution['complete_solution'].toarray()
 
                 _, step, loss, pos = mgr.sess.run(
                     [self.train_op, self.global_step, self.train_model.loss, self.train_model.pos], feed_dict)
@@ -1102,7 +1102,7 @@ class NECTRModel(TensorModel):
                     # Different batch_size for the recommendation step
                     # E.g., n_batch for completion step = 100, then batch_size = ~2K if len(data) = 200000
                     # If same n_batch is used for recommendation, then batch_size = 20 if len(data) = 2000
-                    batch_size = len(partial_data) // self.config.n_batch
+                    batch_size = partial_data.shape[0] // self.config.n_batch
                     for batch in self.DataHelper.get_batch_solution(partial_data, complete_data, batch_size):
                         loss_recommendation += train_step_recommendation(batch)
                         _ = tf.train.global_step(mgr.sess, self.global_step)
@@ -1117,7 +1117,7 @@ class NECTRModel(TensorModel):
 
                 elif self.config.nectr_training_mode == TrainingMode.SIMULTANEOUS:
                     loss = 0.0
-                    batch_size = len(partial_data) // self.config.n_batch
+                    batch_size = partial_data.shape[0] // self.config.n_batch
                     for batch, batch_solution in zip(self.DataHelper.get_batch(data, self.config.batch_size, self.config.negative2positive_ratio), self.DataHelper.get_batch_solution(partial_data, complete_data, batch_size)):
                         loss += train_step(batch, batch_solution)
                         _ = tf.train.global_step(mgr.sess, self.global_step)
