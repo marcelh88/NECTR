@@ -5,7 +5,9 @@ from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
 
 
-# Util methods
+# Utility/Helper methods
+
+
 def parse_exponential(x):
     """
     Fetches the whole and exponent of x. E.g. If x=1e-5, returns (1,-5)
@@ -46,6 +48,12 @@ def generate_range(a, b, dtype='int', step=None):
 
 
 def extract_metrics(results):
+    """
+    Extract the performance metrics from the results
+    :param results: Results obtained after cross validation
+    :return: all_metrics: Metrics for all models evaluated as part of cross validation
+    :return: best_metrics: Metrics of the model chosen by cross validation as the best model
+    """
     all_metrics = None
 
     names = ["mean_rank_raw", "median_rank_raw", "mrr_raw", "hits_top10_raw", "hits_top10_perc_raw",
@@ -101,6 +109,13 @@ def extract_metrics(results):
 
 
 def visualize_item_embeddings(item_embeddings, categories, path_to_results=''):
+    """
+    Plots the item embeddings as a scatter plot colored by category
+    :param item_embeddings: Item embeddings in >2 dimensions
+    :param categories: Item categories used to color the items
+    :param path_to_results: Path to save the image of the scatter plot
+    :return: None
+    """
     pca = PCA(n_components=2)
     embeddings_2d = pca.fit_transform(item_embeddings)
 

@@ -4557,7 +4557,7 @@ Feature_4554	4554
 Feature_4555	4555
 Feature_4556	4556
 Feature_4557	4557
-DeviceCategory	4558
+Feature_4558	4558
 Feature_4559	4559
 Feature_4560	4560
 Feature_4561	4561
