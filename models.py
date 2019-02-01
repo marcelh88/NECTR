@@ -9,11 +9,22 @@ from enum import Enum
 
 
 class TrainingMode(Enum):
+    """
+    Class used to represent the various modes of training the non-linear models
+
+    ALTERNATING: The completion and recommendation loss  are minimized in an alternating fashion
+    SIMULTANEOUS: The completion and recommendation loss are minimized simultaneously
+    """
+
     ALTERNATING = 1
     SIMULTANEOUS = 2
 
 
 class Model(ABC):
+    """
+    Base class for all factorization models
+    """
+
     def __init__(self, datahelper=None, config=None, path_to_results=''):
         self.DataHelper = datahelper
         self.config = config
@@ -42,6 +53,9 @@ class Model(ABC):
 
 
 class MatrixModel(Model):
+    """
+    Base class for all matrix factorization models
+    """
 
     def train(self, data):
         train_model = self.model(self.config)
@@ -60,6 +74,9 @@ class MatrixModel(Model):
 
 
 class TensorModel(Model):
+    """
+    Base class for all tensor factorization models
+    """
 
     @abstractmethod
     def get_parameters(self, mode='train'):
@@ -203,7 +220,7 @@ class TensorModel(Model):
             else:
                 complete_solution = []
                 results = {}
-                for batch in self.DataHelper.get_test_batch(partial_solution['h'].unique().tolist(), 1):
+                for batch in self.DataHelper.get_test_batch(partial_solution['h'].unique().tolist(), batch_size=1):
                     p, results = test_step(batch)
                     complete_solution.append(p)
                 complete_solution = np.array(complete_solution).squeeze(2)
@@ -226,6 +243,10 @@ class TensorModel(Model):
 
 
 class NMFModel(MatrixModel):
+    """
+    Class implementing non-negative matrix factorization (NMF)
+    """
+
     @property
     def name(self):
         return 'NMF'
@@ -258,6 +279,10 @@ class NMFModel(MatrixModel):
 
 
 class TransDModel(TensorModel):
+    """
+    Class implementing TransD
+    """
+
     @property
     def name(self):
         return 'TransD'
@@ -347,6 +372,10 @@ class TransDModel(TensorModel):
 
 
 class TransEModel(TensorModel):
+    """
+    Class implementing TransE
+    """
+
     @property
     def name(self):
         return 'TransE'
@@ -422,6 +451,10 @@ class TransEModel(TensorModel):
 
 
 class TransHModel(TensorModel):
+    """
+    Class implementing TransH
+    """
+
     @property
     def name(self):
         return 'TransH'
@@ -510,6 +543,10 @@ class TransHModel(TensorModel):
 
 
 class TransRModel(TensorModel):
+    """
+    Class implementing TransR
+    """
+
     @property
     def name(self):
         return 'TransR'
@@ -606,6 +643,10 @@ class TransRModel(TensorModel):
 
 
 class RESCOMModel(TensorModel):
+    """
+    Class implementing RESCOM
+    """
+
     @property
     def name(self):
         return 'RESCOM'
@@ -710,6 +751,10 @@ class RESCOMModel(TensorModel):
 
 
 class RESCOMCategoryModel(TensorModel):
+    """
+    Class implementing RESCOM_Category
+    """
+
     @property
     def name(self):
         return 'RESCOMCategory'
@@ -819,6 +864,10 @@ class RESCOMCategoryModel(TensorModel):
 
 
 class NECTRModel(TensorModel):
+    """
+    Class implementing NECTR
+    """
+
     @property
     def name(self):
         return 'NECTR'
@@ -1141,6 +1190,10 @@ class NECTRModel(TensorModel):
 
 
 class NECTRCategoryModel(NECTRModel):
+    """
+    Class implementing NECTR_Category
+    """
+
     @property
     def name(self):
         return 'NECTRCategory'
@@ -1315,6 +1368,10 @@ class NECTRCategoryModel(NECTRModel):
 
 
 class HolEModel(TensorModel):
+    """
+    Class implementing HolE
+    """
+
     @property
     def name(self):
         return 'HolE'

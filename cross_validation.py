@@ -11,6 +11,15 @@ import json
 
 
 class Mask(Enum):
+    """
+    Class used to represent the various mechanisms for masking solutions while generating test samples
+
+    RANDOM: In each solution, 50% of the configured items are randomly chosen for masking.
+    ODD: In each solution, every second item configured is masked.
+    ODD_IN_CATEGORY: In each solution, 50% of the configured items whose categories are known are chosen for masking.
+    CUSTOM: Custom masking where the explicitly specified items are masked (e.g., in the zero-shot scenario).
+    """
+
     RANDOM = 1
     ODD = 2
     ODD_IN_CATEGORY = 3
@@ -18,6 +27,13 @@ class Mask(Enum):
 
 
 class CrossValidation:
+    """
+    Class responsible for the cross-validation pipeline, i.e., splitting the dataset into training, validation, and test
+    sets, performing the cross-validation, i.e., running the model for each hyper-parameter combination, choosing the
+    model generating the best results on the validation set, evaluating the best model on the test set, and producing
+    the final recommendation/ranking of items
+    """
+
     def __init__(self, datahelper=None, parameters=None):
         self.parameters = parameters
         self.train, self.valid, self.test = None, None, None
@@ -29,6 +45,9 @@ class CrossValidation:
         self.config = self.Config(self.DataHelper)
 
     class Config(object):
+        """
+        Class that acts as a wrapper for all configurable (hyper-)parameters
+        """
 
         def __init__(self, datahelper=None):
             # Register to temporarily hold values of parameters
@@ -88,12 +107,27 @@ class CrossValidation:
             self.nectr_n_epoch_completion = 10  # training epochs of the completion loss alone
 
         def register(self, parameter):
+            """Temporarily stores the value of the specified parameter in a temporary register
+            :param parameter: Name of the parameter
+            :return: None
+            """
             self.temp_register[parameter] = getattr(self, parameter)
 
         def recall(self, parameter):
+            """Loads the value of the specified parameter from the temporary register
+            :param parameter: Name of the parameter
+            :return: None
+            """
             setattr(self, parameter, self.temp_register[parameter])
 
     def train_valid_test_split_zero_shot(self, data, test_size=0.2, n=100, non_linear=False):
+        """Splits the data into training, validation, and test sets to simulate the zero-shot scenario
+        :param data: Dataset to split
+        :param test_size: Size of the test set as a ratio
+        :param n: Number of "new" items to be used for the zero-shot scenario
+        :param non_linear: Parameter that indicates that a non-linear model will be used on the data (e.g., NECTR)
+        :return: None
+        """
 
         # Split the triples into training, validation and test sets (only for the Solutions data)
         contains = data[data['r'] == 0]
@@ -166,6 +200,15 @@ class CrossValidation:
             self.test_masked, self.test_mask = self.mask_test_set(self.test, new_item_ids)
 
     def train_valid_test_split(self, data, valid_size=0.2, test_size=0.1, as_mat=False, non_linear=False):
+        """Splits the data into training, validation, and test sets
+        :param data: Dataset to split
+        :param valid_size: Size of the validation set as a ratio
+        :param test_size: Size of the test set as a ratio
+        :param as_mat: Parameter that indicates that the training set should be in the form of a matrix rather than
+        triples (e.g., used with NMF)
+        :param non_linear: Parameter that indicates that a non-linear model will be used on the data (e.g., NECTR)
+        :return: None
+        """
 
         # Split the triples into training, validation and test sets (only for the Solutions data)
         contains = data[data['r'] == 0]
@@ -228,6 +271,15 @@ class CrossValidation:
             self.test_masked, self.test_mask = self.mask_test_set(self.test, self.config.mask)
 
     def run_pipeline(self, model, path_to_results='', plot=False):
+        """
+        Responsible for running the complete cross-validation pipeline, i.e., running the model for each hyper-parameter
+        combination, choosing the model generating the best results on the validation set, evaluating the best model
+        on the test set, storing the results, and visualizing them.
+        :param model: Specific model to use
+        :param path_to_results: Path to store the resultant files (e.g., TensorFlow model, cross-validation results)
+        :param plot: Parameter that indicates whether or not to generate visualizations (e.g., item embeddings)
+        :return: None
+        """
 
         results = []
         best_model = None
@@ -346,6 +398,11 @@ class CrossValidation:
             visualize_item_embeddings(item_embeddings, categories=items['category'].tolist(), path_to_results=path_to_results + rs.name)
 
     def grid_search(self):
+        """
+        Perform a grid search over all parameters to create a list of all possible parameter combinations
+        :param None
+        :return: A list of all possible parameter combinations
+        """
         if self.parameters is None:
             return [vars(self.config)]
 
@@ -362,6 +419,13 @@ class CrossValidation:
         return [dict(zip(names, x)) for x in itertools.product(*parameters)]
 
     def mask_test_set(self, df_test_solutions, mask=None, as_mat=None):
+        """
+
+        :param df_test_solutions: Dataframe consisting of the solutions to be masked
+        :param mask: Masking mechanism to use. Refer the "Mask" class
+        :param as_mat: Parameter that indicates that the mask should be applied on the solutions matrix
+        :return: Tuple consisting of the masked solutions and a list of all the masked items
+        """
         global all_masked_items
         all_masked_items = []
 
@@ -460,8 +524,14 @@ class CrossValidation:
         return df_test_solutions_masked, all_masked_items
 
     def evaluate(self, df_test, test_mask, result):
-        # global confusion
-        # confusion = np.zeros((self.DataHelper.get_item_count(), self.DataHelper.get_item_count()), np.int32)
+        """
+        Performs a ranking of the items based on the scores generated by the model and computes a variety of qualitative
+        metrics
+        :param df_test: A dataframe corresponding to the unmasked test set
+        :param test_mask: A list of all the masked items
+        :param result: Scores obtained after running the model on the test set
+        :return: An array of all the metrics computed on the cross-validation results
+        """
 
         n_items_in_largest_category = self.DataHelper.get_largest_category()['n_item']
 
@@ -471,28 +541,10 @@ class CrossValidation:
 
         # Function to get the ranks of items in the specified solution
         def get_rank(index, filtered=False, in_category=False, h=None):
-            # global confusion
 
             scores = np.array(result[index])
             # Evaluate only with respect to the masked items
             masked = list(map(int, test_mask[index]))
-
-            # ################ CHECK VERSION ##################
-            # if filtered:
-            #     full_data = self.DataHelper.get_data()
-            #     truth = list(map(int, set(full_data[full_data['h'] == h]['t'].astype('int')).difference(set(masked))))
-            #     scores[truth] = -float('inf')
-            #
-            # if in_category:
-            #     return [get_category_rank(i, scores, filtered) for i in masked if self.DataHelper.has_category(i)]
-            # else:
-            #     scores_sorted = np.argsort(-scores)
-            #     ranks = np.empty_like(scores_sorted)
-            #     ranks[scores_sorted] = np.arange(len(scores))
-            #     # confusion[masked, [ranks.tolist().index(0)]*len(masked)] += 1
-            #
-            #     return (ranks[masked] + 1).tolist()
-            # ################ CHECK VERSION ##################
 
             if in_category:
                 return [get_category_rank(i, scores, filtered) for i in masked if self.DataHelper.has_category(i)]
@@ -512,7 +564,6 @@ class CrossValidation:
             scores_sorted = np.argsort(-scores)
             ranks = np.empty_like(scores_sorted)
             ranks[scores_sorted] = np.arange(len(scores))
-            # confusion[masked, [ranks.tolist().index(0)] * len(masked)] += 1
 
             return (ranks[masked] + 1).tolist()
 
@@ -598,6 +649,13 @@ class CrossValidation:
         return metrics
 
     def rank(self, model, partial_solution, path_to_results=''):
+        """
+        Computes the scores after running the specified model on the data
+        :param model: Specific model to use
+        :param partial_solution: Binary partial solution with 1s indicating that the corresponding items were configured
+        :param path_to_results: Path to store the resultant files (e.g., TensorFlow model, cross-validation results)
+        :return: Scores obtained after running the model on the test set
+        """
         for parameter in self.grid_search():
             for p_name, p_value in parameter.items():
                 setattr(self.config, p_name, p_value)
