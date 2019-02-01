@@ -25,10 +25,14 @@ The methods included are:
 
 The models expect data to be given in the following form:
 
-* **triple2id.txt**: All triples that make up the knowledge graph in the form **entity<sub>1</sub>** x **entity<sub>2</sub>** x **relation<sub>12</sub>**. the first line is the number of triples to be used for training (typically, the total number of lines). 
+* **triple2id.txt**: All triples that make up the knowledge graph in the form **entity<sub>1</sub>** x **entity<sub>2</sub>** x **relation<sub>12</sub>**. The first line is the number of triples to be used for training (typically, the total number of lines). 
+This file can also contain data in the form **entity<sub>1</sub>** x **entity<sub>2</sub>** x **relation<sub>12</sub>** x **count<sub>12</sub>** where the last entry represents the count, i.e., the number of occurences of the triple in the knowledge graph.
+It is especially important for the solutions as the count represents the number of times a specific item has been configured in the corresponding solution. This format is necessary for NECTR as an input to the neural autoencoder. To feed data in this format, rename the file [triple2id_count.txt](data/triple2id_count.txt) to triple2id.txt, before running the experiments.
 * **entity2id.txt**: All entities and the corresponding Ids, one per line. The first line is the number of entities.
 * **relation2id.txt**: All relations and the corresponding Ids, one per line. The first line is the number of relations.
 * **Categories.csv**: Each line has information about a category and the items belonging to that category. This file is used in the category-based evaluation and for visualization.
+
+
 * **Solutions_matrix.csv** (Optional; unzip the file Solutions_matrix.zip and place the csv file in the data folder): A matrix of **Solutions** x **Items** where each cell represents the number of times a specific item has been configured in the corresponding solution. This file is necessary for NECTR as an input to the neural autoencoder, whereas the other models do not require this file.
 
 All text files use `\t` as the column delimiter and the CSV files use `;`.
